@@ -1,0 +1,15 @@
+kind: FqdnNetworkPolicy
+apiVersion: twistedsolutions.se/v1alpha1
+metadata:
+  name: test
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: testing
+  egress:
+    - ports:
+        - protocol: TCP
+          port: 443
+      to:
+        - FQDN: aftonbladet.se

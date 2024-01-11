@@ -1,4 +1,4 @@
-# permissions for end users to view fqdnnetworkpolicies.
+# permissions for end users to view fqdnnetworkpolicy.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -12,16 +12,16 @@ metadata:
   name: fqdnnetworkpolicy-viewer-role
 rules:
 - apiGroups:
-  - fqdn.twistedsolutions.se
+  - twistedsolutions.se
   resources:
-  - fqdnnetworkpolicies
+  - fqdnnetworkpolicy
   verbs:
   - get
   - list
   - watch
 - apiGroups:
-  - fqdn.twistedsolutions.se
+  - twistedsolutions.se
   resources:
-  - fqdnnetworkpolicies/status
+  - fqdnnetworkpolicy/status
   verbs:
   - get

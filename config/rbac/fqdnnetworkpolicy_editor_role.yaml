@@ -1,4 +1,4 @@
-# permissions for end users to edit fqdnnetworkpolicies.
+# permissions for end users to edit fqdnnetworkpolicy.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -12,9 +12,9 @@ metadata:
   name: fqdnnetworkpolicy-editor-role
 rules:
 - apiGroups:
-  - fqdn.twistedsolutions.se
+  - twistedsolutions.se
   resources:
-  - fqdnnetworkpolicies
+  - fqdnnetworkpolicy
   verbs:
   - create
   - delete
@@ -24,8 +24,8 @@ rules:
   - update
   - watch
 - apiGroups:
-  - fqdn.twistedsolutions.se
+  - twistedsolutions.se
   resources:
-  - fqdnnetworkpolicies/status
+  - fqdnnetworkpolicy/status
   verbs:
   - get

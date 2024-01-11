@@ -1,4 +1,4 @@
-apiVersion: fqdn.twistedsolutions.se/v1alpha1
+apiVersion: twistedsolutions.se/v1alpha1
 kind: FqdnNetworkPolicy
 metadata:
   labels:
