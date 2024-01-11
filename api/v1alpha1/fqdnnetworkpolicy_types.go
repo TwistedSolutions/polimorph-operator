@@ -17,7 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	k8sNetwork "k8s.io/api/networking/v1"
+	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,13 +32,10 @@ type FqdnNetworkPolicySpec struct {
 	// Foo is an example field of FqdnNetworkPolicy. Edit fqdnnetworkpolicy_types.go to remove/update
 	PodSelector metav1.LabelSelector      `json:"podSelector" protobuf:"bytes,1,opt,name=podSelector"`
 	Egress      []NetworkPolicyEgressRule `json:"egress,omitempty" protobuf:"bytes,3,rep,name=egress"`
-
-	// +optional
-	PolicyTypes []k8sNetwork.PolicyType `json:"policyTypes,omitempty" protobuf:"bytes,4,rep,name=policyTypes,casttype=PolicyType"`
 }
 
 type NetworkPolicyEgressRule struct {
-	Ports []k8sNetwork.NetworkPolicyPort `json:"ports,omitempty" protobuf:"bytes,1,rep,name=ports"`
+	Ports []networking.NetworkPolicyPort `json:"ports,omitempty" protobuf:"bytes,1,rep,name=ports"`
 	To    []NetworkPolicyPeer            `json:"to,omitempty" protobuf:"bytes,2,rep,name=to"`
 }
 
@@ -50,12 +47,14 @@ type NetworkPolicyPeer struct {
 type FqdnNetworkPolicyStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	// +operator-sdk:csv:customresourcedefinitions:type=status
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// FqdnNetworkPolicy is the Schema for the fqdnnetworkpolicies API
+// FqdnNetworkPolicy is the Schema for the fqdnnetworkpolicy API
 type FqdnNetworkPolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
