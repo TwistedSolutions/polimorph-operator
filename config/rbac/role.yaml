@@ -5,9 +5,9 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - twistedsolutions.se
+  - networking.k8s.io
   resources:
-  - fqdnnetworkpolicy
+  - networkpolicies
   verbs:
   - create
   - delete
@@ -19,13 +19,25 @@ rules:
 - apiGroups:
   - twistedsolutions.se
   resources:
-  - fqdnnetworkpolicy/finalizers
+  - fqdnnetworkpolicies
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - twistedsolutions.se
+  resources:
+  - fqdnnetworkpolicies/finalizers
   verbs:
   - update
 - apiGroups:
   - twistedsolutions.se
   resources:
-  - fqdnnetworkpolicy/status
+  - fqdnnetworkpolicies/status
   verbs:
   - get
   - patch

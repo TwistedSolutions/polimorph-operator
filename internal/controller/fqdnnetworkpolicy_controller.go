@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -67,9 +68,11 @@ const (
 	// typeDegradedFqdnNetworkPolicy = "Degraded"
 )
 
-//+kubebuilder:rbac:groups=twistedsolutions.se,resources=fqdnnetworkpolicy,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=twistedsolutions.se,resources=fqdnnetworkpolicy/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=twistedsolutions.se,resources=fqdnnetworkpolicy/finalizers,verbs=update
+//+kubebuilder:rbac:groups=twistedsolutions.se,resources=fqdnnetworkpolicies,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=twistedsolutions.se,resources=fqdnnetworkpolicies/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=twistedsolutions.se,resources=fqdnnetworkpolicies/finalizers,verbs=update
+
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -153,10 +156,22 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			return ctrl.Result{}, err
 		}
 
-		// Set TTL in Status conditions
-		fqdnnetworkpolicy.Status.TTL = ttl
-		if err := r.Status().Update(ctx, fqdnnetworkpolicy); err != nil {
-			return ctrl.Result{}, err
+		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			// Fetch the latest version of FqdnNetworkPolicy
+			err := r.Get(ctx, req.NamespacedName, fqdnnetworkpolicy)
+			if err != nil {
+				return err
+			}
+
+			fqdnnetworkpolicy.Status.TTL = ttl
+
+			// Try updating the FqdnNetworkPolicy status
+			return r.Status().Update(ctx, fqdnnetworkpolicy)
+		})
+
+		if retryErr != nil {
+			log.Error(retryErr, "Failed to update FqdnNetworkPolicy after retries")
+			return ctrl.Result{}, retryErr
 		}
 
 		log.Info("Successfully created NetworkPolicy",
@@ -195,8 +210,6 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 		changed := !equality.Semantic.DeepDerivative(net.Spec, found.Spec)
 
-		fmt.Print(changed)
-
 		if changed {
 			net.Annotations[lastUpdatedByOperator] = time.Now().Format(time.RFC3339)
 
@@ -207,6 +220,17 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			}
 			log.Info("Successfully updated NetworkPolicy",
 				"NetworkPolicy.Namespace", net.Namespace, "NetworkPolicy.Name", net.Name, "Egress", net.Spec.Egress)
+		} else {
+			log.Info("NetworkPolicy already up to date",
+				"NetworkPolicy.Namespace", net.Namespace, "NetworkPolicy.Name", net.Name)
+		}
+
+		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+			// Fetch the latest version of FqdnNetworkPolicy
+			err := r.Get(ctx, req.NamespacedName, fqdnnetworkpolicy)
+			if err != nil {
+				return err
+			}
 
 			meta.SetStatusCondition(&fqdnnetworkpolicy.Status.Conditions, metav1.Condition{Type: typeAvailableFqdnNetworkPolicy,
 				Status: metav1.ConditionTrue, Reason: "Success",
@@ -214,12 +238,15 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 			fqdnnetworkpolicy.Status.TTL = ttl
 
-			if err := r.Status().Update(ctx, fqdnnetworkpolicy); err != nil {
-				log.Error(err, "Failed to update FqdnNetworkPolicy status")
-				return ctrl.Result{}, err
-			}
+			// Try updating the FqdnNetworkPolicy status
+			return r.Status().Update(ctx, fqdnnetworkpolicy)
+		})
 
+		if retryErr != nil {
+			log.Error(retryErr, "Failed to update FqdnNetworkPolicy after retries")
+			return ctrl.Result{}, retryErr
 		}
+
 	}
 
 	// Requeue after TTL.
@@ -307,7 +334,7 @@ func lookupFqdn(fqdn string) ([]string, uint32, error) {
 
 	dnsServer, set := os.LookupEnv("DNS_SERVER")
 	if !set {
-		dnsServer = "kube-dns.kube-system.svc.cluster.local:53" // Default Kubernetes DNS FQDN
+		dnsServer = "172.20.30.131:53" // Default Kubernetes DNS FQDN
 	}
 
 	c := new(dns.Client)
