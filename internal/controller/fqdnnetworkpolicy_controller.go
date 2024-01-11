@@ -334,7 +334,7 @@ func lookupFqdn(fqdn string) ([]string, uint32, error) {
 
 	dnsServer, set := os.LookupEnv("DNS_SERVER")
 	if !set {
-		dnsServer = "172.20.30.131:53" // Default Kubernetes DNS FQDN
+		dnsServer = "kube-dns.kube-system.svc.cluster.local:53" // Default Kubernetes DNS FQDN
 	}
 
 	c := new(dns.Client)
