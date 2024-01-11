@@ -4,7 +4,7 @@
 # More info: https://book.kubebuilder.io/reference/project-config.html
 domain: twistedsolutions.se
 layout:
-- go.kubebuilder.io/v3
+- go.kubebuilder.io/v4
 plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
@@ -16,7 +16,6 @@ resources:
     namespaced: true
   controller: true
   domain: twistedsolutions.se
-  group: fqdn
   kind: FqdnNetworkPolicy
   path: github.com/TwistedSolutions/fqdn-operator/api/v1alpha1
   version: v1alpha1

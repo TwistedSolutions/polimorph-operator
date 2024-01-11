@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package controller
 
 import (
 	"bytes"
@@ -262,7 +262,7 @@ func parseNetworkPolicy(
 			var ips []string
 			ips, ttl, err = lookupFqdn(peer.FQDN)
 			if err != nil {
-				log.Log.Error(err, "Failed to lookup FQDN: %s", "FQDN", peer.FQDN)
+				log.Log.Error(err, "Failed to lookup FQDN", "FQDN", peer.FQDN)
 				return nil, 0, err
 			}
 			for _, ip := range ips {

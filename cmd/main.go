@@ -1,5 +1,5 @@
 /*
-Copyright 2023.
+Copyright 2024.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,8 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	fqdnv1alpha1 "github.com/TwistedSolutions/fqdn-operator/api/v1alpha1"
-	"github.com/TwistedSolutions/fqdn-operator/controllers"
+	twistedsolutionssev1alpha1 "github.com/TwistedSolutions/fqdn-operator/api/v1alpha1"
+	"github.com/TwistedSolutions/fqdn-operator/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -44,13 +44,15 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(fqdnv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(twistedsolutionssev1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
 func main() {
+	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -65,6 +67,8 @@ func main() {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
+		MetricsBindAddress:     metricsAddr,
+		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "44242b51.twistedsolutions.se",
@@ -85,7 +89,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.FqdnNetworkPolicyReconciler{
+	if err = (&controller.FqdnNetworkPolicyReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
