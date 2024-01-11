@@ -49,6 +49,7 @@ type FqdnNetworkPolicyStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	// +operator-sdk:csv:customresourcedefinitions:type=status
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	TTL        uint32             `json:"ttl,omitempty" patchStrategy:"merge"`
 }
 
 //+kubebuilder:object:root=true
