@@ -1,8 +1,10 @@
-# fqdn-operator
-// TODO(user): Add simple overview of use/purpose
+# FQDN-Operator
+FQDN-Operator is a Kubernetes operator designed to perform DNS lookups on Fully Qualified Domain Names (FQDN) and subsequently update NetworkPolicies with the resulting CIDRs. This is especially useful for environments where IP addresses associated with domain names can change frequently, and there's a need to ensure that NetworkPolicies are always up-to-date.
 
-## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+## Features
+- Dynamic DNS Lookups: Continuously resolves FQDNs to ensure the most recent CIDRs are available.
+- NetworkPolicy Integration: Automatically updates the Kubernetes NetworkPolicies with the CIDRs obtained from the DNS lookups.
+- Custom Resource (CR) Support: Uses a custom resource named FqdnNetworkPolicy to specify which FQDNs need to be resolved and which NetworkPolicies should be updated.
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
@@ -42,7 +44,7 @@ make undeploy
 ```
 
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+We welcome contributions to the FQDN-Operator! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
 ### How it works
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
