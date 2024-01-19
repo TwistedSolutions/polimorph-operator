@@ -331,13 +331,14 @@ func parseNetworkPolicy(
 }
 
 func lookupFqdn(fqdn string) ([]string, uint32, error) {
+
 	dnsServer, set := os.LookupEnv("DNS_SERVER")
 	if !set {
-		dnsServer = "172.20.30.131:53" // Default Kubernetes DNS FQDN
+		dnsServer = "kube-dns.kube-system.svc.cluster.local:53" // Default Kubernetes DNS FQDN
 	}
 
-	c := &dns.Client{}
-	m := &dns.Msg{}
+	c := new(dns.Client)
+	m := new(dns.Msg)
 
 	m.SetQuestion(dns.Fqdn(fqdn), dns.TypeA)
 	r, _, err := c.Exchange(m, dnsServer)
@@ -345,7 +346,7 @@ func lookupFqdn(fqdn string) ([]string, uint32, error) {
 		return nil, 0, err
 	}
 	if len(r.Answer) == 0 {
-		return nil, 0, fmt.Errorf("no DNS records found for FQDN: %s", fqdn)
+		return nil, 0, fmt.Errorf("no dns records found for fqdn: %s", fqdn)
 	}
 
 	var ips []string
@@ -360,18 +361,13 @@ func lookupFqdn(fqdn string) ([]string, uint32, error) {
 	}
 
 	if len(ips) == 0 {
-		return nil, 0, fmt.Errorf("no A records found for FQDN: %s", fqdn)
+		return nil, 0, fmt.Errorf("no a records found for fqdn: %s", fqdn)
 	}
 
 	sort.Slice(ips, func(i, j int) bool {
 		// Parse IPs
 		ip1 := net.ParseIP(ips[i])
 		ip2 := net.ParseIP(ips[j])
-
-		// Check for invalid IPs
-		if ip1 == nil || ip2 == nil {
-			return false
-		}
 
 		// Compare byte-wise
 		return bytes.Compare(ip1, ip2) < 0
