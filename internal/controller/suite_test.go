@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -48,6 +49,8 @@ func TestControllers(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+	Expect(os.Setenv("KUBEBUILDER_ASSETS", "../../bin/k8s/1.27.1-darwin-arm64")).To(Succeed())
+
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	By("bootstrapping test environment")
@@ -70,6 +73,44 @@ var _ = BeforeSuite(func() {
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
+
+})
+
+var _ = Describe("lookupFqdn", func() {
+	var (
+		fqdn string
+		ips  []string
+		ttl  uint32
+		err  error
+	)
+
+	JustBeforeEach(func() {
+		ips, ttl, err = lookupFqdn(fqdn)
+	})
+
+	Context("when the FQDN has A records", func() {
+		BeforeEach(func() {
+			fqdn = "google.com"
+			// Set up DNS records for example.com
+		})
+
+		It("returns the IPs and TTL without error", func() {
+			Expect(err).NotTo(HaveOccurred())
+			Expect(ips).NotTo(BeEmpty())
+			Expect(ttl).To(BeNumerically(">", 0))
+		})
+	})
+
+	Context("when the FQDN has no DNS records", func() {
+		BeforeEach(func() {
+			fqdn = "no-records.example.com"
+			// Set up DNS records for no-records.example.com
+		})
+
+		It("returns an error", func() {
+			Expect(err).To(MatchError("no DNS records found for FQDN: no-records.example.com"))
+		})
+	})
 
 })
 
