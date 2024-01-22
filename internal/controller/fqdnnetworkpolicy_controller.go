@@ -42,7 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	fqdnv1alpha1 "github.com/TwistedSolutions/fqdn-operator/api/v1alpha1"
+	networkingv1alpha1 "github.com/TwistedSolutions/fqdn-operator/api/v1alpha1"
 
 	"github.com/miekg/dns"
 
@@ -68,9 +68,9 @@ const (
 	// typeDegradedFqdnNetworkPolicy = "Degraded"
 )
 
-//+kubebuilder:rbac:groups=twistedsolutions.se,resources=fqdnnetworkpolicies,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=twistedsolutions.se,resources=fqdnnetworkpolicies/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=twistedsolutions.se,resources=fqdnnetworkpolicies/finalizers,verbs=update
+//+kubebuilder:rbac:groups=networking.twistedsolutions.se,resources=fqdnnetworkpolicies,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=networking.twistedsolutions.se,resources=fqdnnetworkpolicies/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=networking.twistedsolutions.se,resources=fqdnnetworkpolicies/finalizers,verbs=update
 
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 
@@ -82,7 +82,7 @@ const (
 func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	fqdnnetworkpolicy := &fqdnv1alpha1.FqdnNetworkPolicy{}
+	fqdnnetworkpolicy := &networkingv1alpha1.FqdnNetworkPolicy{}
 	err := r.Get(ctx, req.NamespacedName, fqdnnetworkpolicy)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -256,7 +256,7 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 // SetupWithManager sets up the controller with the Manager.
 func (r *FqdnNetworkPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&fqdnv1alpha1.FqdnNetworkPolicy{}).
+		For(&networkingv1alpha1.FqdnNetworkPolicy{}).
 		Owns(&networking.NetworkPolicy{}, builder.WithPredicates(ignoreOwnUpdatesPredicate())).
 		Complete(r)
 }
@@ -277,7 +277,7 @@ func ignoreOwnUpdatesPredicate() predicate.Predicate {
 
 // Parse a NetworkPolicy CR from the FqdnNetworkPolicy with DNS lookups on FQDN
 func parseNetworkPolicy(
-	fqdnnetworkpolicy *fqdnv1alpha1.FqdnNetworkPolicy) (*networking.NetworkPolicy, uint32, error) {
+	fqdnnetworkpolicy *networkingv1alpha1.FqdnNetworkPolicy) (*networking.NetworkPolicy, uint32, error) {
 
 	var ttl uint32
 	var err error

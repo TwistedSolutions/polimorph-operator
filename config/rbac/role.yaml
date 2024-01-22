@@ -17,7 +17,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - twistedsolutions.se
+  - networking.twistedsolutions.se
   resources:
   - fqdnnetworkpolicies
   verbs:
@@ -29,13 +29,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - twistedsolutions.se
+  - networking.twistedsolutions.se
   resources:
   - fqdnnetworkpolicies/finalizers
   verbs:
   - update
 - apiGroups:
-  - twistedsolutions.se
+  - networking.twistedsolutions.se
   resources:
   - fqdnnetworkpolicies/status
   verbs:
