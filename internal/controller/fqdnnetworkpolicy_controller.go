@@ -64,6 +64,7 @@ const (
 	TTL                            = "fqdnnetworkpolicies.twistedsolutions.se/ttl"
 	DefaultTTLValue                = "80"
 	lastUpdatedByOperator          = "fqdnnetworkpolicies.twistedsolutions.se/last-updated"
+	timeLayout                     = "2006-01-02T15:04:05-07:00"
 	// typeDegradedFqdnNetworkPolicy represents the status used when the custom resource is deleted and the finalizer operations are to occur.
 	// typeDegradedFqdnNetworkPolicy = "Degraded"
 )
@@ -148,7 +149,7 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			log.Info("Added owner reference", "NetworkPolicy.Namespace", net.Namespace, "NetworkPolicy.Name", net.Name)
 		}
 
-		net.Annotations[lastUpdatedByOperator] = time.Now().Format(time.RFC3339)
+		net.Annotations[lastUpdatedByOperator] = time.Now().Format(timeLayout)
 
 		if err = r.Create(ctx, net); err != nil {
 			log.Error(err, "Failed to create new NetworkPolicy",
@@ -211,7 +212,7 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		changed := !equality.Semantic.DeepDerivative(net.Spec, found.Spec)
 
 		if changed {
-			net.Annotations[lastUpdatedByOperator] = time.Now().Format(time.RFC3339)
+			net.Annotations[lastUpdatedByOperator] = time.Now().Format(timeLayout)
 
 			if err = r.Update(ctx, net); err != nil {
 				log.Error(err, "Failed to update NetworkPolicy",
@@ -257,7 +258,8 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 func (r *FqdnNetworkPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1alpha1.FqdnNetworkPolicy{}).
-		Owns(&networking.NetworkPolicy{}, builder.WithPredicates(ignoreOwnUpdatesPredicate())).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		Owns(&networking.NetworkPolicy{}, builder.WithPredicates(ignoreOwnUpdatesPredicate(), predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
 
@@ -266,7 +268,17 @@ func ignoreOwnUpdatesPredicate() predicate.Predicate {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// Skip reconcile if the NetworkPolicy was updated by the operator
 			if lastUpdated, ok := e.ObjectOld.GetAnnotations()[lastUpdatedByOperator]; ok {
-				if lastUpdated == e.ObjectNew.GetAnnotations()[lastUpdatedByOperator] {
+				// Parse the date string
+				t, err := time.Parse(timeLayout, lastUpdated)
+				if err != nil {
+					return true // Proceed with reconcile for other updates
+				}
+				// Add 5 seconds to the date string
+				tmore := t.Add(5 * time.Second)
+				// Format the updated date string
+				tmoreString := tmore.Format(timeLayout)
+				// Compare the updated date string with the current date string and skip reconcile if the NetworkPolicy was probably updated by the operator
+				if tmoreString <= e.ObjectNew.GetAnnotations()[lastUpdatedByOperator] {
 					return false // Skip reconcile
 				}
 			}
