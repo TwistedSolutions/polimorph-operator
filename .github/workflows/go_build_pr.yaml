@@ -1,4 +1,4 @@
-name: Build Image on PR
+name: Build Image on push
 
 on:
   push:
