@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -48,6 +49,7 @@ func TestControllers(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+	Expect(os.Setenv("KUBEBUILDER_ASSETS", "../../bin/k8s/1.27.1-darwin-arm64")).To(Succeed())
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	By("bootstrapping test environment")
