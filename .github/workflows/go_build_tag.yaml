@@ -23,3 +23,12 @@ jobs:
         tags: latest ${{ env.RELEASE_VERSION }}
         containerfiles: |
           ./Dockerfile
+    - name: Push To quay.io
+      id: push-to-quay
+      uses: redhat-actions/push-to-registry@v2
+      with:
+        image: ${{ steps.build-image.outputs.image }}
+        tags: ${{ steps.build-image.outputs.tags }}
+        registry: quay.io/twistedsolutions
+        username: twistedsolutions+github
+        password: ${{ secrets.REGISTRY_PASSWORD }}
