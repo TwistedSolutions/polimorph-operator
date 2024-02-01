@@ -13,6 +13,6 @@ jobs:
       uses: redhat-actions/buildah-build@v2
       with:
         image: fqdn-operator
-        tags: latest $GITHUB_BASE_REF
+        tags: latest ${{ github.base_ref }}
         containerfiles: |
           ./Dockerfile
