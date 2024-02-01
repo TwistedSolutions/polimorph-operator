@@ -17,13 +17,8 @@ limitations under the License.
 package controller
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"net"
-	"os"
-	"sort"
-	"strconv"
 	"time"
 
 	networking "k8s.io/api/networking/v1"
@@ -43,8 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	networkingv1alpha1 "github.com/TwistedSolutions/fqdn-operator/api/v1alpha1"
-
-	"github.com/miekg/dns"
+	"github.com/TwistedSolutions/fqdn-operator/internal/utils"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 )
@@ -61,9 +55,9 @@ const (
 	// typeAvailableFqdnNetworkPolicy represents the status of the fqdnnetworkpolicy reconciliation
 	typeAvailableFqdnNetworkPolicy = "Available"
 	typeTTL                        = "TTL"
-	TTL                            = "fqdnnetworkpolicies.twistedsolutions.se/ttl"
 	DefaultTTLValue                = "80"
 	lastUpdatedByOperator          = "fqdnnetworkpolicies.twistedsolutions.se/last-updated"
+	timeLayout                     = "2006-01-02T15:04:05-07:00"
 	// typeDegradedFqdnNetworkPolicy represents the status used when the custom resource is deleted and the finalizer operations are to occur.
 	// typeDegradedFqdnNetworkPolicy = "Degraded"
 )
@@ -123,7 +117,7 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	err = r.Get(ctx, types.NamespacedName{Name: fqdnnetworkpolicy.Name, Namespace: fqdnnetworkpolicy.Namespace}, found)
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new fqdnnetworkpolicy
-		net, ttl, err = parseNetworkPolicy(fqdnnetworkpolicy)
+		net, ttl, err = utils.ParseNetworkPolicy(fqdnnetworkpolicy)
 
 		if err != nil {
 			log.Error(err, "Failed to define new NetworkPolicy resource for FqdnNetworkPolicy")
@@ -148,7 +142,7 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			log.Info("Added owner reference", "NetworkPolicy.Namespace", net.Namespace, "NetworkPolicy.Name", net.Name)
 		}
 
-		net.Annotations[lastUpdatedByOperator] = time.Now().Format(time.RFC3339)
+		net.Annotations[lastUpdatedByOperator] = time.Now().Format(timeLayout)
 
 		if err = r.Create(ctx, net); err != nil {
 			log.Error(err, "Failed to create new NetworkPolicy",
@@ -185,7 +179,7 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		// Let's return the error for the reconciliation be re-trigged again
 		return ctrl.Result{}, err
 	} else { //Update after TTL
-		net, ttl, err = parseNetworkPolicy(fqdnnetworkpolicy)
+		net, ttl, err = utils.ParseNetworkPolicy(fqdnnetworkpolicy)
 
 		if err != nil {
 			log.Error(err, "Failed to define new NetworkPolicy resource for FqdnNetworkPolicy")
@@ -211,7 +205,7 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		changed := !equality.Semantic.DeepDerivative(net.Spec, found.Spec)
 
 		if changed {
-			net.Annotations[lastUpdatedByOperator] = time.Now().Format(time.RFC3339)
+			net.Annotations[lastUpdatedByOperator] = time.Now().Format(timeLayout)
 
 			if err = r.Update(ctx, net); err != nil {
 				log.Error(err, "Failed to update NetworkPolicy",
@@ -257,7 +251,8 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 func (r *FqdnNetworkPolicyReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1alpha1.FqdnNetworkPolicy{}).
-		Owns(&networking.NetworkPolicy{}, builder.WithPredicates(ignoreOwnUpdatesPredicate())).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		Owns(&networking.NetworkPolicy{}, builder.WithPredicates(ignoreOwnUpdatesPredicate(), predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
 
@@ -266,112 +261,21 @@ func ignoreOwnUpdatesPredicate() predicate.Predicate {
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// Skip reconcile if the NetworkPolicy was updated by the operator
 			if lastUpdated, ok := e.ObjectOld.GetAnnotations()[lastUpdatedByOperator]; ok {
-				if lastUpdated == e.ObjectNew.GetAnnotations()[lastUpdatedByOperator] {
+				// Parse the date string
+				t, err := time.Parse(timeLayout, lastUpdated)
+				if err != nil {
+					return true // Proceed with reconcile for other updates
+				}
+				// Add 5 seconds to the date string
+				tmore := t.Add(5 * time.Second)
+				// Format the updated date string
+				tmoreString := tmore.Format(timeLayout)
+				// Compare the updated date string with the current date string and skip reconcile if the NetworkPolicy was probably updated by the operator
+				if tmoreString <= e.ObjectNew.GetAnnotations()[lastUpdatedByOperator] {
 					return false // Skip reconcile
 				}
 			}
 			return true // Proceed with reconcile for other updates
 		},
 	}
-}
-
-// Parse a NetworkPolicy CR from the FqdnNetworkPolicy with DNS lookups on FQDN
-func parseNetworkPolicy(
-	fqdnnetworkpolicy *networkingv1alpha1.FqdnNetworkPolicy) (*networking.NetworkPolicy, uint32, error) {
-
-	var ttl uint32
-	var err error
-
-	egress := []networking.NetworkPolicyEgressRule{}
-	for _, e := range fqdnnetworkpolicy.Spec.Egress {
-		peers := []networking.NetworkPolicyPeer{}
-		for _, peer := range e.To {
-			var ips []string
-			ips, ttl, err = lookupFqdn(peer.FQDN)
-			if err != nil {
-				log.Log.Error(err, "Failed to lookup FQDN", "FQDN", peer.FQDN)
-				return nil, 0, err
-			}
-			for _, ip := range ips {
-				cidr := ip
-				cidr = cidr + "/32"
-				peer := networking.NetworkPolicyPeer{
-					IPBlock: &networking.IPBlock{
-						CIDR: cidr,
-					},
-				}
-				peers = append(peers, peer)
-			}
-		}
-		rule := networking.NetworkPolicyEgressRule{
-			Ports: e.Ports,
-			To:    peers,
-		}
-		egress = append(egress, rule)
-	}
-
-	net := &networking.NetworkPolicy{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fqdnnetworkpolicy.Name,
-			Namespace: fqdnnetworkpolicy.Namespace,
-			Annotations: map[string]string{
-				TTL: strconv.FormatUint(uint64(ttl), 10),
-			},
-		},
-		Spec: networking.NetworkPolicySpec{
-			PodSelector: fqdnnetworkpolicy.Spec.PodSelector,
-			Egress:      egress,
-			PolicyTypes: []networking.PolicyType{
-				"Egress",
-			},
-		},
-	}
-
-	return net, ttl, nil
-}
-
-func lookupFqdn(fqdn string) ([]string, uint32, error) {
-
-	dnsServer, set := os.LookupEnv("DNS_SERVER")
-	if !set {
-		dnsServer = "kube-dns.kube-system.svc.cluster.local:53" // Default Kubernetes DNS FQDN
-	}
-
-	c := new(dns.Client)
-	m := new(dns.Msg)
-
-	m.SetQuestion(dns.Fqdn(fqdn), dns.TypeA)
-	r, _, err := c.Exchange(m, dnsServer)
-	if err != nil {
-		return nil, 0, err
-	}
-	if len(r.Answer) == 0 {
-		return nil, 0, fmt.Errorf("no dns records found for fqdn: %s", fqdn)
-	}
-
-	var ips []string
-	var lowestTTL uint32
-	for i, ans := range r.Answer {
-		if a, ok := ans.(*dns.A); ok {
-			ips = append(ips, a.A.String())
-			if i == 0 || a.Hdr.Ttl < lowestTTL {
-				lowestTTL = a.Hdr.Ttl
-			}
-		}
-	}
-
-	if len(ips) == 0 {
-		return nil, 0, fmt.Errorf("no a records found for fqdn: %s", fqdn)
-	}
-
-	sort.Slice(ips, func(i, j int) bool {
-		// Parse IPs
-		ip1 := net.ParseIP(ips[i])
-		ip2 := net.ParseIP(ips[j])
-
-		// Compare byte-wise
-		return bytes.Compare(ip1, ip2) < 0
-	})
-
-	return ips, lowestTTL, nil
 }
