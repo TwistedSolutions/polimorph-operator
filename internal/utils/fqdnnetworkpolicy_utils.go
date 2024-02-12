@@ -96,8 +96,13 @@ func lookupFqdn(fqdn string) ([]string, uint32, error) {
 	var ips []string
 	var lowestTTL uint32
 	for i, ans := range r.Answer {
-		if a, ok := ans.(*dns.A); ok {
+		switch a := ans.(type) {
+		case *dns.A:
 			ips = append(ips, a.A.String())
+			if i == 0 || a.Hdr.Ttl < lowestTTL {
+				lowestTTL = a.Hdr.Ttl
+			}
+		case *dns.CNAME:
 			if i == 0 || a.Hdr.Ttl < lowestTTL {
 				lowestTTL = a.Hdr.Ttl
 			}
