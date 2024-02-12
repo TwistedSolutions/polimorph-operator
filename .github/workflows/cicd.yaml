@@ -3,14 +3,18 @@ name: CI/CD Workflow
 on:
   push:
     branches:
-      - dev
-      - next
+      - develop
       - main
+      - release/*
+      - hotfix/*
+      - 'refs/tags/v*'
   pull_request:
     branches:
-      - dev
-      - next
+      - develop
       - main
+      - release/*
+      - hotfix/*
+      - 'refs/tags/v*'
 
 jobs:
   mod:
@@ -45,9 +49,9 @@ jobs:
       run: |
         make test
         echo "outcome=$?" >> $GITHUB_OUTPUT
-  build-and-push-dev-next:
+  build-and-push-develop:
     needs: test
-    if: (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/next') && needs.test.outputs.outcome == '0'
+    if: github.ref == 'refs/heads/develop' && needs.test.outputs.outcome == '0'
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
