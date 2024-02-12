@@ -2,6 +2,8 @@ name: CI/CD Workflow
 
 on:
   push:
+    tags:
+      - "*"
     branches:
       - develop
       - main
