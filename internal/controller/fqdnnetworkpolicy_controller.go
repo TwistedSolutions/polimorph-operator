@@ -215,7 +215,7 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			log.Info("Successfully updated NetworkPolicy",
 				"NetworkPolicy.Namespace", net.Namespace, "NetworkPolicy.Name", net.Name, "Egress", net.Spec.Egress)
 		} else {
-			log.Info("NetworkPolicy already up to date",
+			log.V(1).Info("NetworkPolicy already up to date",
 				"NetworkPolicy.Namespace", net.Namespace, "NetworkPolicy.Name", net.Name)
 		}
 
