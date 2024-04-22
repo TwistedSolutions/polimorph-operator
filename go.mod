@@ -3,7 +3,7 @@ module github.com/TwistedSolutions/fqdn-operator
 go 1.21
 
 require (
-	github.com/miekg/dns v1.1.57
+	github.com/miekg/dns v1.1.59
 	github.com/onsi/ginkgo/v2 v2.9.5
 	github.com/onsi/gomega v1.27.7
 	k8s.io/api v0.27.2
@@ -57,7 +57,7 @@ require (
 	golang.org/x/term v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
-	golang.org/x/tools v0.13.0 // indirect
+	golang.org/x/tools v0.19.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
