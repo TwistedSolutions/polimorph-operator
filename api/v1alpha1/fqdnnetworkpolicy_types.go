@@ -32,6 +32,7 @@ type FqdnNetworkPolicySpec struct {
 	// Foo is an example field of FqdnNetworkPolicy. Edit fqdnnetworkpolicy_types.go to remove/update
 	PodSelector metav1.LabelSelector      `json:"podSelector" protobuf:"bytes,1,opt,name=podSelector"`
 	Egress      []NetworkPolicyEgressRule `json:"egress,omitempty" protobuf:"bytes,3,rep,name=egress"`
+	Interval    *uint32                   `json:"interval,omitempty" protobuf:"bytes,4,opt,name=interval"`
 }
 
 type NetworkPolicyEgressRule struct {
@@ -40,7 +41,9 @@ type NetworkPolicyEgressRule struct {
 }
 
 type NetworkPolicyPeer struct {
-	FQDN string `json:"FQDN,omitempty" protobuf:"bytes,1,name=FQDN"`
+	FQDN      string   `json:"FQDN,omitempty" protobuf:"bytes,1,name=FQDN"`
+	Endpoint  string   `json:"endpoint,omitempty" protobuf:"bytes,2,name=endpoint"`
+	JSONPaths []string `json:"jsonPaths,omitempty" protobuf:"bytes,3,rep,name=jsonPaths"`
 }
 
 // FqdnNetworkPolicyStatus defines the observed state of FqdnNetworkPolicy

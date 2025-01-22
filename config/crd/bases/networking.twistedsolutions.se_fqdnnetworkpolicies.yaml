@@ -77,10 +77,19 @@ spec:
                         properties:
                           FQDN:
                             type: string
+                          endpoint:
+                            type: string
+                          jsonPaths:
+                            items:
+                              type: string
+                            type: array
                         type: object
                       type: array
                   type: object
                 type: array
+              interval:
+                format: int32
+                type: integer
               podSelector:
                 description: Foo is an example field of FqdnNetworkPolicy. Edit fqdnnetworkpolicy_types.go
                   to remove/update
