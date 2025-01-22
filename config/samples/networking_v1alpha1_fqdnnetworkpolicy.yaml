@@ -9,4 +9,15 @@ metadata:
     app.kubernetes.io/created-by: fqdn-operator
   name: fqdnnetworkpolicy-sample
 spec:
-  # TODO(user): Add fields here
+  egress:
+  - ports:
+    - port: 443
+      protocol: TCP
+    to:
+    - FQDN: api.github.com
+    - FQDN: github.com
+    - FQDN: nodejs.org
+    - FQDN: registry.npmjs.org
+  podSelector:
+    matchLabels:
+      app: example
