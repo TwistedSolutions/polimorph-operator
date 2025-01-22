@@ -2,14 +2,19 @@ package utils
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 
 	networkingv1alpha1 "github.com/TwistedSolutions/fqdn-operator/api/v1alpha1"
 	"github.com/miekg/dns"
+	"github.com/yalp/jsonpath"
 	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,7 +24,7 @@ const (
 	TTL = "fqdnnetworkpolicies.twistedsolutions.se/ttl"
 )
 
-// Parse a NetworkPolicy CR from the FqdnNetworkPolicy with DNS lookups on FQDN
+// Parse a NetworkPolicy CR from the FqdnNetworkPolicy with DNS lookups on FQDN or endpoint queries
 func ParseNetworkPolicy(
 	fqdnnetworkpolicy *networkingv1alpha1.FqdnNetworkPolicy) (*networking.NetworkPolicy, uint32, error) {
 
@@ -31,14 +36,24 @@ func ParseNetworkPolicy(
 		peers := []networking.NetworkPolicyPeer{}
 		for _, peer := range e.To {
 			var ips []string
-			ips, ttl, err = lookupFqdn(peer.FQDN)
-			if err != nil {
-				log.Log.Error(err, "Failed to lookup FQDN", "FQDN", peer.FQDN)
-				return nil, 0, err
+			if peer.FQDN != "" {
+				ips, ttl, err = lookupFqdn(peer.FQDN)
+				if err != nil {
+					log.Log.Error(err, "Failed to lookup FQDN", "FQDN", peer.FQDN)
+					return nil, 0, err
+				}
+			} else if peer.Endpoint != "" {
+				ips, err = queryEndpoint(peer.Endpoint, peer.JSONPaths)
+				if err != nil {
+					log.Log.Error(err, "Failed to query endpoint", "Endpoint", peer.Endpoint)
+					return nil, 0, err
+				}
 			}
 			for _, ip := range ips {
 				cidr := ip
-				cidr = cidr + "/32"
+				if !strings.Contains(cidr, "/") {
+					cidr = cidr + "/32"
+				}
 				peer := networking.NetworkPolicyPeer{
 					IPBlock: &networking.IPBlock{
 						CIDR: cidr,
@@ -75,10 +90,9 @@ func ParseNetworkPolicy(
 }
 
 func lookupFqdn(fqdn string) ([]string, uint32, error) {
-
 	dnsServer, set := os.LookupEnv("DNS_SERVER")
 	if !set {
-		dnsServer = "kube-dns.kube-system.svc.cluster.local:53" // Default Kubernetes DNS FQDN
+		dnsServer = "8.8.8.8:53" // Default Kubernetes DNS FQDN
 	}
 
 	c := new(dns.Client)
@@ -114,13 +128,68 @@ func lookupFqdn(fqdn string) ([]string, uint32, error) {
 	}
 
 	sort.Slice(ips, func(i, j int) bool {
-		// Parse IPs
 		ip1 := net.ParseIP(ips[i])
 		ip2 := net.ParseIP(ips[j])
-
-		// Compare byte-wise
 		return bytes.Compare(ip1, ip2) < 0
 	})
 
 	return ips, lowestTTL, nil
+}
+
+func queryEndpoint(endpoint string, jsonPaths []string) ([]string, error) {
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch endpoint %s, status code: %d", endpoint, resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var jsonData map[string]interface{}
+	if err := json.Unmarshal(body, &jsonData); err != nil {
+		return nil, err
+	}
+
+	var ips []string
+	for _, path := range jsonPaths {
+		values, err := extractValuesFromJSON(jsonData, path)
+		if err != nil {
+			return nil, err
+		}
+		for _, v := range values {
+			ips = append(ips, v)
+		}
+	}
+
+	return ips, nil
+}
+
+func extractValuesFromJSON(jsonData map[string]interface{}, path string) ([]string, error) {
+	values, err := jsonpath.Read(jsonData, path)
+	if err != nil {
+		return nil, fmt.Errorf("error extracting values from path %s: %v", path, err)
+	}
+
+	ipList, ok := values.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid data format at path %s, expected list of strings", path)
+	}
+
+	ips := make([]string, len(ipList))
+	for i, v := range ipList {
+		ip, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid value at path %s, expected string", path)
+		}
+		ips[i] = ip
+	}
+
+	return ips, nil
 }

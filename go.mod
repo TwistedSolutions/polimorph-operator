@@ -8,6 +8,7 @@ require (
 	github.com/miekg/dns v1.1.61
 	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.33.1
+	github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0
 	k8s.io/api v0.31.0
 	k8s.io/apimachinery v0.31.0
 	k8s.io/client-go v0.31.0
