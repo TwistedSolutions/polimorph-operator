@@ -2,11 +2,8 @@ package utils
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
-	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -14,7 +11,6 @@ import (
 
 	networkingv1alpha1 "github.com/TwistedSolutions/polimorph-operator/api/v1alpha1"
 	"github.com/miekg/dns"
-	"github.com/yalp/jsonpath"
 	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -40,12 +36,6 @@ func ParseNetworkPolicy(
 				ips, ttl, err = lookupFqdn(peer.FQDN)
 				if err != nil {
 					log.Log.Error(err, "Failed to lookup FQDN", "FQDN", peer.FQDN)
-					return nil, 0, err
-				}
-			} else if peer.Endpoint != "" {
-				ips, err = queryEndpoint(peer.Endpoint, peer.JSONPaths)
-				if err != nil {
-					log.Log.Error(err, "Failed to query endpoint", "Endpoint", peer.Endpoint)
 					return nil, 0, err
 				}
 			}
@@ -136,7 +126,7 @@ func lookupFqdn(fqdn string) ([]string, uint32, error) {
 	return ips, lowestTTL, nil
 }
 
-func queryEndpoint(endpoint string, jsonPaths []string) ([]string, error) {
+/* func queryEndpoint(endpoint string, jsonPaths []string) ([]string, error) {
 	resp, err := http.Get(endpoint)
 	if err != nil {
 		return nil, err
@@ -190,4 +180,4 @@ func extractValuesFromJSON(jsonData map[string]interface{}, path string) ([]stri
 	}
 
 	return ips, nil
-}
+} */

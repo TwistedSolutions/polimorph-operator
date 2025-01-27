@@ -130,9 +130,9 @@ var _ = Describe("CronJob controller", func() {
 					Namespace: FqdnNetworkPolicyNamespace,
 				},
 				Spec: networkingv1alpha1.FqdnNetworkPolicySpec{
-					Egress: []networkingv1alpha1.NetworkPolicyEgressRule{
+					Egress: []networkingv1alpha1.FqdnNetworkPolicyEgressRule{
 						{
-							To: []networkingv1alpha1.NetworkPolicyPeer{
+							To: []networkingv1alpha1.FqdnNetworkPolicyPeer{
 								{
 									FQDN: Fqdn,
 								},

@@ -51,8 +51,6 @@ type FqdnNetworkPolicyReconciler struct {
 // Definitions
 const (
 	typeAvailableFqdnNetworkPolicy = "Available"
-	typeTTL                        = "TTL"
-	DefaultTTLValue                = "80"
 	lastUpdatedByOperator          = "fqdnnetworkpolicies.twistedsolutions.se/last-updated"
 	timeLayout                     = "2006-01-02T15:04:05-07:00"
 )
@@ -67,8 +65,7 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	log := log.FromContext(ctx)
 
 	fqdnnetworkpolicy := &networkingv1alpha1.FqdnNetworkPolicy{}
-	err := r.Get(ctx, req.NamespacedName, fqdnnetworkpolicy)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, fqdnnetworkpolicy); err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Info("FqdnNetworkPolicy resource not found. Ignoring since object must be deleted")
 			return ctrl.Result{}, nil
@@ -77,15 +74,10 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	// If FqdnNetworkPolicy exists, but has no status, set condition to available and status to reconciling
 	if len(fqdnnetworkpolicy.Status.Conditions) == 0 {
-		meta.SetStatusCondition(&fqdnnetworkpolicy.Status.Conditions, metav1.Condition{Type: typeAvailableFqdnNetworkPolicy, Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
-		if err = r.Status().Update(ctx, fqdnnetworkpolicy); err != nil {
+		meta.SetStatusCondition(&fqdnnetworkpolicy.Status.Conditions, metav1.Condition{Type: typeAvailableFqdnNetworkPolicy, Status: metav1.ConditionUnknown, Reason: "FqdnNetworkPolicyCreated", Message: "FqdnNetworkPolicy has been created"})
+		if err := r.Status().Update(ctx, fqdnnetworkpolicy); err != nil {
 			log.Error(err, "Failed to update FqdnNetworkPolicy status")
-			return ctrl.Result{}, err
-		}
-		if err := r.Get(ctx, req.NamespacedName, fqdnnetworkpolicy); err != nil {
-			log.Error(err, "Failed to re-fetch FqdnNetworkPolicy")
 			return ctrl.Result{}, err
 		}
 	}
@@ -93,7 +85,7 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	var ttl uint32
 	var requeueInterval time.Duration
 	var net *networking.NetworkPolicy
-	net, ttl, err = utils.ParseNetworkPolicy(fqdnnetworkpolicy)
+	net, ttl, err := utils.ParseNetworkPolicy(fqdnnetworkpolicy)
 	if err != nil {
 		log.Error(err, "Failed to parse FqdnNetworkPolicy")
 		meta.SetStatusCondition(&fqdnnetworkpolicy.Status.Conditions, metav1.Condition{
@@ -108,20 +100,15 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	if fqdnnetworkpolicy.Spec.Interval != nil {
-		requeueInterval = time.Duration(*fqdnnetworkpolicy.Spec.Interval) * time.Second
-	} else {
-		requeueInterval = time.Duration(ttl) * time.Second
-	}
+	requeueInterval = time.Duration(ttl) * time.Second
 
 	found := &networking.NetworkPolicy{}
-	err = r.Get(ctx, types.NamespacedName{Name: fqdnnetworkpolicy.Name, Namespace: fqdnnetworkpolicy.Namespace}, found)
-	if err != nil && apierrors.IsNotFound(err) {
+	if err := r.Get(ctx, types.NamespacedName{Name: fqdnnetworkpolicy.Name, Namespace: fqdnnetworkpolicy.Namespace}, found); err != nil && apierrors.IsNotFound(err) {
 		if err := controllerutil.SetControllerReference(fqdnnetworkpolicy, net, r.Scheme); err != nil {
 			return ctrl.Result{}, err
 		}
 		net.Annotations[lastUpdatedByOperator] = time.Now().Format(timeLayout)
-		if err = r.Create(ctx, net); err != nil {
+		if err := r.Create(ctx, net); err != nil {
 			log.Error(err, "Failed to create NetworkPolicy")
 			return ctrl.Result{}, err
 		}
@@ -152,7 +139,7 @@ func (r *FqdnNetworkPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 		log.Info("Successfully updated NetworkPolicy")
 	} else {
-		log.Info("NetworkPolicy is up to date")
+		log.V(1).Info("NetworkPolicy is up to date")
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {

@@ -21,42 +21,34 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // FqdnNetworkPolicySpec defines the desired state of FqdnNetworkPolicy
 type FqdnNetworkPolicySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of FqdnNetworkPolicy. Edit fqdnnetworkpolicy_types.go to remove/update
-	PodSelector metav1.LabelSelector      `json:"podSelector" protobuf:"bytes,1,opt,name=podSelector"`
-	Egress      []NetworkPolicyEgressRule `json:"egress,omitempty" protobuf:"bytes,3,rep,name=egress"`
-	Interval    *uint32                   `json:"interval,omitempty" protobuf:"bytes,4,opt,name=interval"`
+	PodSelector metav1.LabelSelector          `json:"podSelector" protobuf:"bytes,1,opt,name=podSelector"`
+	Egress      []FqdnNetworkPolicyEgressRule `json:"egress,omitempty" protobuf:"bytes,3,rep,name=egress"`
 }
 
-type NetworkPolicyEgressRule struct {
+type FqdnNetworkPolicyEgressRule struct {
 	Ports []networking.NetworkPolicyPort `json:"ports,omitempty" protobuf:"bytes,1,rep,name=ports"`
-	To    []NetworkPolicyPeer            `json:"to,omitempty" protobuf:"bytes,2,rep,name=to"`
+	To    []FqdnNetworkPolicyPeer        `json:"to,omitempty" protobuf:"bytes,2,rep,name=to"`
 }
 
-type NetworkPolicyPeer struct {
-	FQDN      string   `json:"FQDN,omitempty" protobuf:"bytes,1,name=FQDN"`
-	Endpoint  string   `json:"endpoint,omitempty" protobuf:"bytes,2,name=endpoint"`
-	JSONPaths []string `json:"jsonPaths,omitempty" protobuf:"bytes,3,rep,name=jsonPaths"`
+type FqdnNetworkPolicyPeer struct {
+	FQDN string `json:"FQDN,omitempty" protobuf:"bytes,1,name=FQDN"`
 }
 
 // FqdnNetworkPolicyStatus defines the observed state of FqdnNetworkPolicy
 type FqdnNetworkPolicyStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 	// +operator-sdk:csv:customresourcedefinitions:type=status
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 	TTL        uint32             `json:"ttl,omitempty" patchStrategy:"merge"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // FqdnNetworkPolicy is the Schema for the fqdnnetworkpolicy API
 type FqdnNetworkPolicy struct {

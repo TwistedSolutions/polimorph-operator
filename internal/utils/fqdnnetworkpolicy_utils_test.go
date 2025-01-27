@@ -56,7 +56,7 @@ var _ = Describe("ParseNetworkPolicy", func() {
 			protocol := v1.ProtocolTCP
 			fqdnNetworkPolicy := &networkingv1alpha1.FqdnNetworkPolicy{
 				Spec: networkingv1alpha1.FqdnNetworkPolicySpec{
-					Egress: []networkingv1alpha1.NetworkPolicyEgressRule{
+					Egress: []networkingv1alpha1.FqdnNetworkPolicyEgressRule{
 						{
 							Ports: []networking.NetworkPolicyPort{
 								{
@@ -64,7 +64,7 @@ var _ = Describe("ParseNetworkPolicy", func() {
 									Protocol: &protocol,
 								},
 							},
-							To: []networkingv1alpha1.NetworkPolicyPeer{
+							To: []networkingv1alpha1.FqdnNetworkPolicyPeer{
 								{
 									FQDN: "google.com",
 								},
@@ -92,14 +92,14 @@ var _ = Describe("ParseNetworkPolicy", func() {
 		It("should return an error", func() {
 			fqdnNetworkPolicy := &networkingv1alpha1.FqdnNetworkPolicy{
 				Spec: networkingv1alpha1.FqdnNetworkPolicySpec{
-					Egress: []networkingv1alpha1.NetworkPolicyEgressRule{
+					Egress: []networkingv1alpha1.FqdnNetworkPolicyEgressRule{
 						{
 							Ports: []networking.NetworkPolicyPort{
 								{
 									Port: &intstr.IntOrString{Type: intstr.Int, IntVal: 80},
 								},
 							},
-							To: []networkingv1alpha1.NetworkPolicyPeer{
+							To: []networkingv1alpha1.FqdnNetworkPolicyPeer{
 								{
 									FQDN: "invalid.fqdn",
 								},
