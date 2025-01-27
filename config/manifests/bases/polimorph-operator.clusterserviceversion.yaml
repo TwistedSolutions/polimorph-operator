@@ -1,0 +1,67 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+  name: polimorph-operator.v0.0.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: FqdnNetworkPolicy is the Schema for the fqdnnetworkpolicy API
+      displayName: Fqdn Network Policy
+      kind: FqdnNetworkPolicy
+      name: fqdnnetworkpolicies.networking.twistedsolutions.se
+      statusDescriptors:
+      - displayName: Conditions
+        path: conditions
+      version: v1alpha1
+    - description: PoliMorphPolicy is the Schema for the polimorphpolicies API
+      displayName: Poli Morph Policy
+      kind: PoliMorphPolicy
+      name: polimorphpolicies.networking.twistedsolutions.se
+      statusDescriptors:
+      - displayName: Conditions
+        path: conditions
+      version: v1
+  description: PoliMorph Operator handles the PoliMorphPolicy object which can consume
+    FQDN and JSON endpoints and create NetworkPolicies
+  displayName: PoliMorph Operator
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - dns
+  - fqdn
+  - json
+  - network
+  - networkpolicies
+  - morph
+  - polimorph
+  - security
+  links:
+  - name: Polimorph Operator
+    url: https://polimorph-operator.domain
+  maintainers:
+  - email: cisco@twistedsolutions.se
+    name: Cisco Osterman
+  maturity: alpha
+  provider:
+    name: TwistedSolutions
+    url: twistedsolutions.se
+  version: 0.0.0

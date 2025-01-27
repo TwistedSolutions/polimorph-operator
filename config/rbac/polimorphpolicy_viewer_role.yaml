@@ -1,0 +1,23 @@
+# permissions for end users to view polimorphpolicies.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: polimorph-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: polimorphpolicy-viewer-role
+rules:
+- apiGroups:
+  - networking.twistedsolutions.se
+  resources:
+  - polimorphpolicies
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.twistedsolutions.se
+  resources:
+  - polimorphpolicies/status
+  verbs:
+  - get
