@@ -35,8 +35,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	networkingv1alpha1 "github.com/TwistedSolutions/fqdn-operator/api/v1alpha1"
-	"github.com/TwistedSolutions/fqdn-operator/internal/utils"
+	networkingv1alpha1 "github.com/TwistedSolutions/polimorph-operator/api/v1alpha1"
+	"github.com/TwistedSolutions/polimorph-operator/internal/utils"
 
 	"k8s.io/apimachinery/pkg/api/equality"
 )

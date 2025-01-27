@@ -61,7 +61,7 @@ jobs:
       id: build-image
       uses: redhat-actions/buildah-build@v2
       with:
-        image: fqdn-operator
+        image: polimorph-operator
         tags: latest ${{ github.ref_name }}
         containerfiles: |
           ./Dockerfile
@@ -86,7 +86,7 @@ jobs:
       id: build-image
       uses: redhat-actions/buildah-build@v2
       with:
-        image: fqdn-operator
+        image: polimorph-operator
         tags: latest ${{ env.RELEASE_VERSION }}
         containerfiles: |
           ./Dockerfile

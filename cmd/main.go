@@ -35,8 +35,8 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	networkingv1alpha1 "github.com/TwistedSolutions/fqdn-operator/api/v1alpha1"
-	"github.com/TwistedSolutions/fqdn-operator/internal/controller"
+	networkingv1alpha1 "github.com/TwistedSolutions/polimorph-operator/api/v1alpha1"
+	"github.com/TwistedSolutions/polimorph-operator/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
 

@@ -4,9 +4,9 @@ metadata:
   labels:
     app.kubernetes.io/name: fqdnnetworkpolicy
     app.kubernetes.io/instance: fqdnnetworkpolicy-sample
-    app.kubernetes.io/part-of: fqdn-operator
+    app.kubernetes.io/part-of: polimorph-operator
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: fqdn-operator
+    app.kubernetes.io/created-by: polimorph-operator
   name: fqdnnetworkpolicy-sample
 spec:
   egress:

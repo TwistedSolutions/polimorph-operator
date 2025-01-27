@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	networkingv1alpha1 "github.com/TwistedSolutions/fqdn-operator/api/v1alpha1"
+	networkingv1alpha1 "github.com/TwistedSolutions/polimorph-operator/api/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"

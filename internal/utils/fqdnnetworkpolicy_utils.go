@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	networkingv1alpha1 "github.com/TwistedSolutions/fqdn-operator/api/v1alpha1"
+	networkingv1alpha1 "github.com/TwistedSolutions/polimorph-operator/api/v1alpha1"
 	"github.com/miekg/dns"
 	"github.com/yalp/jsonpath"
 	networking "k8s.io/api/networking/v1"
@@ -163,9 +163,7 @@ func queryEndpoint(endpoint string, jsonPaths []string) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		for _, v := range values {
-			ips = append(ips, v)
-		}
+		ips = append(ips, values...)
 	}
 
 	return ips, nil

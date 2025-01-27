@@ -1,4 +1,4 @@
-module github.com/TwistedSolutions/fqdn-operator
+module github.com/TwistedSolutions/polimorph-operator
 
 go 1.22.0
 
