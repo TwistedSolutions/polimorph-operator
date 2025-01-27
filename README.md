@@ -4,7 +4,7 @@ polimorph-operator is a Kubernetes operator designed to perform DNS lookups on F
 ## Features
 - Dynamic DNS Lookups: Continuously resolves FQDNs to ensure the most recent CIDRs are available.
 - NetworkPolicy Integration: Automatically updates the Kubernetes NetworkPolicies with the CIDRs obtained from the DNS lookups.
-- Custom Resource (CR) Support: Uses a custom resource named FqdnNetworkPolicy to specify which FQDNs need to be resolved and which NetworkPolicies should be updated.
+- Custom Resource (CR) Support: Uses a custom resource named PoliMorphPolicy to specify which FQDNs need to be resolved and which NetworkPolicies should be updated.
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
@@ -80,7 +80,7 @@ More information can be found via the [Kubebuilder Documentation](https://book.k
 
 ## License
 
-Copyright 2024.
+Copyright 2025.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
