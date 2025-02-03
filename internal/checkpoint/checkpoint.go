@@ -1,10 +1,12 @@
 package checkpoint
 
 import (
-	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"os"
+	"slices"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -13,6 +15,17 @@ import (
 
 	networking "k8s.io/api/networking/v1"
 )
+
+var privateNets []*net.IPNet
+
+func init() {
+	for _, block := range []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"} {
+		_, net, err := net.ParseCIDR(block)
+		if err == nil {
+			privateNets = append(privateNets, net)
+		}
+	}
+}
 
 type checkpointObject struct {
 	Name        string   `json:"name"`
@@ -45,14 +58,24 @@ func SetupCheckpointAPI(k8sClient client.Client) {
 	}
 
 	log := log.Log.WithName("SetupCheckpointAPI")
-	http.HandleFunc("/checkpoint", checkpointConfigHandler(k8sClient))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/checkpoint", checkpointConfigHandler(k8sClient))
+
+	port := os.Getenv("CHECKPOINT_API_PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	server := &http.Server{
+		Addr:         ":" + port,
+		Handler:      mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+	}
+
 	go func() {
-		port := os.Getenv("CHECKPOINT_API_PORT")
-		if port == "" {
-			port = "8080"
-		}
 		log.Info("Starting Checkpoint API", "port", port)
-		if err := http.ListenAndServe(":"+port, nil); err != nil {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Error(err, "Failed to start Checkpoint API")
 			panic("Failed to start Checkpoint API: " + err.Error())
 		}
@@ -71,7 +94,7 @@ func checkpointConfigHandler(k8sClient client.Client) http.HandlerFunc {
 		// Prepare a list of network policies
 		policies := &networking.NetworkPolicyList{}
 
-		ctx := context.Background()
+		ctx := r.Context()
 
 		if namespace != "" {
 			if err := k8sClient.List(ctx, policies, client.InNamespace(namespace)); err != nil {
@@ -97,28 +120,154 @@ func checkpointConfigHandler(k8sClient client.Client) http.HandlerFunc {
 			policies.Items = filtered
 		}
 
-		// Marshal the policies to checkpoint-compatible checkpointObject list
+		mode := r.URL.Query().Get("mode")
 		var objects []checkpointObject
-		for _, policy := range policies.Items {
-			// Generate a unique ID for the policy
-			id := generateUIDFromData(policy.Name + policy.Namespace)
-			name := policy.Name
-			description := "Network Policy for " + name
-			var ranges []string
-			for _, egressRule := range policy.Spec.Egress {
-				for _, to := range egressRule.To {
-					if to.IPBlock != nil {
-						ranges = append(ranges, to.IPBlock.CIDR)
+
+		switch mode {
+		case "policy":
+			// One checkpointObject per NetworkPolicy (if it has IPBlock ranges)
+			for _, policy := range policies.Items {
+				var ranges []string
+				for _, egressRule := range policy.Spec.Egress {
+					for _, to := range egressRule.To {
+						if to.IPBlock != nil {
+							ranges = append(ranges, to.IPBlock.CIDR)
+						}
+					}
+				}
+				if len(ranges) > 0 {
+					slices.Sort(ranges)
+					objects = append(objects, checkpointObject{
+						Name:        policy.Name,
+						ID:          generateUIDFromData(policy.Name + policy.Namespace),
+						Description: "Network Policy for " + policy.Name,
+						Ranges:      ranges,
+					})
+				}
+			}
+
+		case "internalexternal":
+			// Aggregate all CIDRs into internal vs. public sets (with deduplication)
+			internalSet := make(map[string]struct{})
+			publicSet := make(map[string]struct{})
+			for _, policy := range policies.Items {
+				for _, egressRule := range policy.Spec.Egress {
+					for _, to := range egressRule.To {
+						if to.IPBlock != nil {
+							cidr := to.IPBlock.CIDR
+							if isInternalCIDR(cidr) {
+								internalSet[cidr] = struct{}{}
+							} else {
+								publicSet[cidr] = struct{}{}
+							}
+						}
 					}
 				}
 			}
-			if len(ranges) > 0 {
+			var internalRanges, publicRanges []string
+			for cidr := range internalSet {
+				internalRanges = append(internalRanges, cidr)
+			}
+			for cidr := range publicSet {
+				publicRanges = append(publicRanges, cidr)
+			}
+			if len(internalRanges) > 0 {
+				slices.Sort(internalRanges)
 				objects = append(objects, checkpointObject{
-					Name:        name,
-					ID:          id,
-					Description: description,
-					Ranges:      ranges,
+					Name:        "Internal IPs",
+					ID:          generateUIDFromData("InternalIPs"),
+					Description: "Aggregated internal IPs from network policies",
+					Ranges:      internalRanges,
 				})
+			}
+			if len(publicRanges) > 0 {
+				slices.Sort(publicRanges)
+				objects = append(objects, checkpointObject{
+					Name:        "Public IPs",
+					ID:          generateUIDFromData("PublicIPs"),
+					Description: "Aggregated public IPs from network policies",
+					Ranges:      publicRanges,
+				})
+			}
+
+		case "namespace":
+			// Group by namespace and aggregate IPBlock CIDRs per namespace (deduplicated)
+			nsMap := make(map[string]map[string]struct{})
+			for _, policy := range policies.Items {
+				ns := policy.Namespace
+				if nsMap[ns] == nil {
+					nsMap[ns] = make(map[string]struct{})
+				}
+				for _, egressRule := range policy.Spec.Egress {
+					for _, to := range egressRule.To {
+						if to.IPBlock != nil {
+							nsMap[ns][to.IPBlock.CIDR] = struct{}{}
+						}
+					}
+				}
+			}
+			for ns, cidrSet := range nsMap {
+				var ranges []string
+				for cidr := range cidrSet {
+					ranges = append(ranges, cidr)
+				}
+				if len(ranges) > 0 {
+					slices.Sort(ranges)
+					objects = append(objects, checkpointObject{
+						Name:        ns,
+						ID:          generateUIDFromData(ns),
+						Description: "Aggregated IPs from network policies in namespace " + ns,
+						Ranges:      ranges,
+					})
+				}
+			}
+
+		case "all":
+			// Aggregate all CIDRs from all policies into a deduplicated set
+			allSet := make(map[string]struct{})
+			for _, policy := range policies.Items {
+				for _, egressRule := range policy.Spec.Egress {
+					for _, to := range egressRule.To {
+						if to.IPBlock != nil {
+							allSet[to.IPBlock.CIDR] = struct{}{}
+						}
+					}
+				}
+			}
+			var allRanges []string
+			for cidr := range allSet {
+				allRanges = append(allRanges, cidr)
+			}
+			if len(allRanges) > 0 {
+				slices.Sort(allRanges)
+				objects = append(objects, checkpointObject{
+					Name:        "All IPs",
+					ID:          generateUIDFromData("AllIPs"),
+					Description: "Aggregated IPs from all network policies",
+					Ranges:      allRanges,
+				})
+			}
+
+		default:
+			// Fallback (e.g. same as "policy")
+			for _, policy := range policies.Items {
+				var ranges []string
+				for _, egressRule := range policy.Spec.Egress {
+					for _, to := range egressRule.To {
+						if to.IPBlock != nil {
+							ranges = append(ranges, to.IPBlock.CIDR)
+						}
+					}
+				}
+				if len(ranges) > 0 {
+					slices.Sort(ranges)
+					objects = append(objects, checkpointObject{
+						Name:        policy.Name,
+						ID:          generateUIDFromData(policy.Name + policy.Namespace),
+						Description: "Network Policy for " + policy.Name,
+						Ranges:      ranges,
+					})
+				}
 			}
 		}
 
@@ -140,4 +289,17 @@ func checkpointConfigHandler(k8sClient client.Client) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(data)
 	}
+}
+
+func isInternalCIDR(cidr string) bool {
+	_, ipnet, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return false
+	}
+	for _, privateNet := range privateNets {
+		if privateNet.Contains(ipnet.IP) {
+			return true
+		}
+	}
+	return false
 }
