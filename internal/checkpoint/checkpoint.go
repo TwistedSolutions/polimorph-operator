@@ -112,12 +112,14 @@ func checkpointConfigHandler(k8sClient client.Client) http.HandlerFunc {
 					}
 				}
 			}
-			objects = append(objects, checkpointObject{
-				Name:        name,
-				ID:          id,
-				Description: description,
-				Ranges:      ranges,
-			})
+			if len(ranges) > 0 {
+				objects = append(objects, checkpointObject{
+					Name:        name,
+					ID:          id,
+					Description: description,
+					Ranges:      ranges,
+				})
+			}
 		}
 
 		// Create a Checkpoint-compatible configuration
