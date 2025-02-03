@@ -19,7 +19,7 @@ import (
 var privateNets []*net.IPNet
 
 func init() {
-	for _, block := range []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"} {
+	for _, block := range []string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"} { // According to RFC1918
 		_, net, err := net.ParseCIDR(block)
 		if err == nil {
 			privateNets = append(privateNets, net)
