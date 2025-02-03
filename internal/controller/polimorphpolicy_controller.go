@@ -154,6 +154,9 @@ func (r *PoliMorphPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 		net.Annotations[lastUpdatedByOperator] = time.Now().Format(timeLayout)
 		net.Annotations[intervalAnnotation] = fmt.Sprintf("%d", int(requeueInterval.Seconds()))
+		if err := controllerutil.SetControllerReference(polimorphpolicy, net, r.Scheme); err != nil {
+			return ctrl.Result{}, err
+		}
 		if err := r.Update(ctx, net); err != nil {
 			log.Error(err, "Failed to update NetworkPolicy")
 			return ctrl.Result{}, err
