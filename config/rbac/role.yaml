@@ -20,6 +20,7 @@ rules:
   - networking.twistedsolutions.se
   resources:
   - fqdnnetworkpolicies
+  - polimorphpolicies
   verbs:
   - create
   - delete
@@ -32,12 +33,14 @@ rules:
   - networking.twistedsolutions.se
   resources:
   - fqdnnetworkpolicies/finalizers
+  - polimorphpolicies/finalizers
   verbs:
   - update
 - apiGroups:
   - networking.twistedsolutions.se
   resources:
   - fqdnnetworkpolicies/status
+  - polimorphpolicies/status
   verbs:
   - get
   - patch

@@ -1,34 +1,33 @@
-package utils
+package morph
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 
-	networkingv1alpha1 "github.com/TwistedSolutions/polimorph-operator/api/v1alpha1"
+	polimorphv1 "github.com/TwistedSolutions/polimorph-operator/api/v1"
 	"github.com/miekg/dns"
+	"github.com/yalp/jsonpath"
 	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const (
-	TTL = "fqdnnetworkpolicies.twistedsolutions.se/ttl"
-)
-
 // Parse a NetworkPolicy CR from the FqdnNetworkPolicy with DNS lookups on FQDN or endpoint queries
 func ParseNetworkPolicy(
-	fqdnnetworkpolicy *networkingv1alpha1.FqdnNetworkPolicy) (*networking.NetworkPolicy, uint32, error) {
+	polimorphpolicy *polimorphv1.PoliMorphPolicy) (*networking.NetworkPolicy, uint32, error) {
 
 	var ttl uint32
 	var err error
 
 	egress := []networking.NetworkPolicyEgressRule{}
-	for _, e := range fqdnnetworkpolicy.Spec.Egress {
+	for _, e := range polimorphpolicy.Spec.Egress {
 		peers := []networking.NetworkPolicyPeer{}
 		for _, peer := range e.To {
 			var ips []string
@@ -36,6 +35,12 @@ func ParseNetworkPolicy(
 				ips, ttl, err = lookupFqdn(peer.FQDN)
 				if err != nil {
 					log.Log.Error(err, "Failed to lookup FQDN", "FQDN", peer.FQDN)
+					return nil, 0, err
+				}
+			} else if peer.Endpoint != "" {
+				ips, err = queryEndpoint(peer.Endpoint, peer.JSONPaths)
+				if err != nil {
+					log.Log.Error(err, "Failed to query endpoint", "Endpoint", peer.Endpoint)
 					return nil, 0, err
 				}
 			}
@@ -61,14 +66,11 @@ func ParseNetworkPolicy(
 
 	net := &networking.NetworkPolicy{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fqdnnetworkpolicy.Name,
-			Namespace: fqdnnetworkpolicy.Namespace,
-			Annotations: map[string]string{
-				TTL: strconv.FormatUint(uint64(ttl), 10),
-			},
+			Name:      polimorphpolicy.Name,
+			Namespace: polimorphpolicy.Namespace,
 		},
 		Spec: networking.NetworkPolicySpec{
-			PodSelector: fqdnnetworkpolicy.Spec.PodSelector,
+			PodSelector: polimorphpolicy.Spec.PodSelector,
 			Egress:      egress,
 			PolicyTypes: []networking.PolicyType{
 				"Egress",
@@ -82,51 +84,92 @@ func ParseNetworkPolicy(
 func lookupFqdn(fqdn string) ([]string, uint32, error) {
 	dnsServer, set := os.LookupEnv("DNS_SERVER")
 	if !set {
-		dnsServer = "kube-dns.kube-system.svc.cluster.local:53" // Default Kubernetes DNS FQDN
+		dnsServer = "kube-dns.kube-system.svc.cluster.local:53"
 	}
+
+	ipSet := make(map[string]struct{})
+	var minTTL uint32
 
 	c := new(dns.Client)
-	m := new(dns.Msg)
 
-	m.SetQuestion(dns.Fqdn(fqdn), dns.TypeA)
-	r, _, err := c.Exchange(m, dnsServer)
-	if err != nil {
+	visited := make(map[string]bool)
+
+	if err := resolveFQDN(c, fqdn, dnsServer, ipSet, &minTTL, visited); err != nil {
 		return nil, 0, err
 	}
-	if r.Rcode != dns.RcodeSuccess {
-		return nil, 0, fmt.Errorf("no dns records found for fqdn: %s", fqdn)
+
+	if len(ipSet) == 0 {
+		return nil, 0, fmt.Errorf("no A records found for FQDN: %s", fqdn)
 	}
 
-	var ips []string
-	var lowestTTL uint32
-	for i, ans := range r.Answer {
-		switch a := ans.(type) {
-		case *dns.A:
-			ips = append(ips, a.A.String())
-			if i == 0 || a.Hdr.Ttl < lowestTTL {
-				lowestTTL = a.Hdr.Ttl
-			}
-		case *dns.CNAME:
-			if i == 0 || a.Hdr.Ttl < lowestTTL {
-				lowestTTL = a.Hdr.Ttl
-			}
-		}
+	// Convert map to slice
+	ips := make([]string, 0, len(ipSet))
+	for ip := range ipSet {
+		ips = append(ips, ip)
 	}
 
-	if len(ips) == 0 {
-		return nil, 0, fmt.Errorf("no a records found for fqdn: %s", fqdn)
-	}
-
+	// Sort IPs for consistent output
 	sort.Slice(ips, func(i, j int) bool {
 		ip1 := net.ParseIP(ips[i])
 		ip2 := net.ParseIP(ips[j])
 		return bytes.Compare(ip1, ip2) < 0
 	})
 
-	return ips, lowestTTL, nil
+	return ips, minTTL, nil
 }
 
-/* func queryEndpoint(endpoint string, jsonPaths []string) ([]string, error) {
+func resolveFQDN(
+	c *dns.Client,
+	fqdn string,
+	server string,
+	ipSet map[string]struct{},
+	minTTL *uint32,
+	visited map[string]bool,
+) error {
+	if visited[fqdn] {
+		return nil
+	}
+	visited[fqdn] = true
+
+	m := new(dns.Msg)
+	m.SetQuestion(dns.Fqdn(fqdn), dns.TypeA)
+	m.RecursionDesired = true
+
+	resp, _, err := c.Exchange(m, server)
+	if err != nil {
+		return fmt.Errorf("DNS query failed for %s: %v", fqdn, err)
+	}
+
+	if resp.Rcode != dns.RcodeSuccess {
+		return fmt.Errorf("DNS query for %s not successful (Rcode=%d)", fqdn, resp.Rcode)
+	}
+
+	for _, rr := range append(resp.Answer, resp.Extra...) {
+		switch rr.Header().Rrtype {
+		case dns.TypeA:
+			aRec := rr.(*dns.A)
+			ipSet[aRec.A.String()] = struct{}{}
+			updateMinTTL(minTTL, aRec.Hdr.Ttl)
+		case dns.TypeCNAME:
+			cname := rr.(*dns.CNAME)
+			updateMinTTL(minTTL, cname.Hdr.Ttl)
+			err = resolveFQDN(c, cname.Target, server, ipSet, minTTL, visited)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func updateMinTTL(minTTL *uint32, newTTL uint32) {
+	if *minTTL == 0 || newTTL < *minTTL {
+		*minTTL = newTTL
+	}
+}
+
+func queryEndpoint(endpoint string, jsonPaths []string) ([]string, error) {
 	resp, err := http.Get(endpoint)
 	if err != nil {
 		return nil, err
@@ -180,4 +223,4 @@ func extractValuesFromJSON(jsonData map[string]interface{}, path string) ([]stri
 	}
 
 	return ips, nil
-} */
+}

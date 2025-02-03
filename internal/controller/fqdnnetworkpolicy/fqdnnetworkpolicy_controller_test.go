@@ -26,7 +26,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	networkingv1alpha1 "github.com/TwistedSolutions/fqdn-operator/api/v1alpha1"
+	networkingv1alpha1 "github.com/TwistedSolutions/polimorph-operator/api/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -130,9 +130,9 @@ var _ = Describe("CronJob controller", func() {
 					Namespace: FqdnNetworkPolicyNamespace,
 				},
 				Spec: networkingv1alpha1.FqdnNetworkPolicySpec{
-					Egress: []networkingv1alpha1.NetworkPolicyEgressRule{
+					Egress: []networkingv1alpha1.FqdnNetworkPolicyEgressRule{
 						{
-							To: []networkingv1alpha1.NetworkPolicyPeer{
+							To: []networkingv1alpha1.FqdnNetworkPolicyPeer{
 								{
 									FQDN: Fqdn,
 								},

@@ -4,20 +4,24 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.16.1
-  name: fqdnnetworkpolicies.networking.twistedsolutions.se
+  name: polimorphpolicies.networking.twistedsolutions.se
 spec:
   group: networking.twistedsolutions.se
   names:
-    kind: FqdnNetworkPolicy
-    listKind: FqdnNetworkPolicyList
-    plural: fqdnnetworkpolicies
-    singular: fqdnnetworkpolicy
+    kind: PoliMorphPolicy
+    listKind: PoliMorphPolicyList
+    plural: polimorphpolicies
+    shortNames:
+    - morph
+    - polimorph
+    - pmorph
+    singular: polimorphpolicy
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - name: v1
     schema:
       openAPIV3Schema:
-        description: FqdnNetworkPolicy is the Schema for the fqdnnetworkpolicy API
+        description: PoliMorphPolicy is the Schema for the polimorphpolicies API
         properties:
           apiVersion:
             description: |-
@@ -37,7 +41,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: FqdnNetworkPolicySpec defines the desired state of FqdnNetworkPolicy
+            description: PoliMorphPolicySpec defines the desired state of PoliMorphPolicy
             properties:
               egress:
                 items:
@@ -77,13 +81,24 @@ spec:
                         properties:
                           FQDN:
                             type: string
+                          endpoint:
+                            type: string
+                          jsonPaths:
+                            items:
+                              type: string
+                            type: array
                         type: object
                       type: array
                   type: object
                 type: array
+              interval:
+                format: int32
+                type: integer
               podSelector:
-                description: Foo is an example field of FqdnNetworkPolicy. Edit fqdnnetworkpolicy_types.go
-                  to remove/update
+                description: |-
+                  A label selector is a label query over a set of resources. The result of matchLabels and
+                  matchExpressions are ANDed. An empty label selector matches all objects. A null
+                  label selector matches no objects.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
@@ -129,10 +144,11 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
             required:
+            - egress
             - podSelector
             type: object
           status:
-            description: FqdnNetworkPolicyStatus defines the observed state of FqdnNetworkPolicy
+            description: PoliMorphPolicyStatus defines the observed state of PoliMorphPolicy
             properties:
               conditions:
                 items:
@@ -190,9 +206,11 @@ spec:
                   - type
                   type: object
                 type: array
-              ttl:
+              interval:
                 format: int32
                 type: integer
+              lastUpdated:
+                type: string
             type: object
         type: object
     served: true

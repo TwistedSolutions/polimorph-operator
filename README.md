@@ -1,10 +1,10 @@
-# FQDN-Operator
-FQDN-Operator is a Kubernetes operator designed to perform DNS lookups on Fully Qualified Domain Names (FQDN) and subsequently update NetworkPolicies with the resulting CIDRs. This is especially useful for environments where IP addresses associated with domain names can change frequently, and there's a need to ensure that NetworkPolicies are always up-to-date.
+# polimorph-operator
+polimorph-operator is a Kubernetes operator designed to perform DNS lookups on Fully Qualified Domain Names (FQDN) and subsequently update NetworkPolicies with the resulting CIDRs. This is especially useful for environments where IP addresses associated with domain names can change frequently, and there's a need to ensure that NetworkPolicies are always up-to-date.
 
 ## Features
 - Dynamic DNS Lookups: Continuously resolves FQDNs to ensure the most recent CIDRs are available.
 - NetworkPolicy Integration: Automatically updates the Kubernetes NetworkPolicies with the CIDRs obtained from the DNS lookups.
-- Custom Resource (CR) Support: Uses a custom resource named FqdnNetworkPolicy to specify which FQDNs need to be resolved and which NetworkPolicies should be updated.
+- Custom Resource (CR) Support: Uses a custom resource named PoliMorphPolicy to specify which FQDNs need to be resolved and which NetworkPolicies should be updated.
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
@@ -20,13 +20,13 @@ kubectl apply -f config/samples/
 2. Build and push your image to the location specified by `IMG`:
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/fqdn-operator:tag
+make docker-build docker-push IMG=<some-registry>/polimorph-operator:tag
 ```
 
 3. Deploy the controller to the cluster with the image specified by `IMG`:
 
 ```sh
-make deploy IMG=<some-registry>/fqdn-operator:tag
+make deploy IMG=<some-registry>/polimorph-operator:tag
 ```
 
 ### Uninstall CRDs
@@ -44,7 +44,7 @@ make undeploy
 ```
 
 ## Contributing
-We welcome contributions to the FQDN-Operator! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+We welcome contributions to the polimorph-operator! Please see the [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
 ### How it works
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
@@ -80,7 +80,7 @@ More information can be found via the [Kubebuilder Documentation](https://book.k
 
 ## License
 
-Copyright 2024.
+Copyright 2025.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
