@@ -104,7 +104,7 @@ func (r *PoliMorphPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		if polimorphpolicy.Spec.Interval != nil {
 			return time.Duration(*polimorphpolicy.Spec.Interval) * time.Second
 		}
-		return time.Duration(ttl) * time.Second
+		return time.Duration(ttl+1) * time.Second
 	}
 
 	requeueInterval = getInterval()
