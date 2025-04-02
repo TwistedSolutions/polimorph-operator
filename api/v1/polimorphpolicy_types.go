@@ -26,6 +26,9 @@ type PoliMorphPolicySpec struct {
 	PodSelector metav1.LabelSelector        `json:"podSelector" protobuf:"bytes,1,opt,name=podSelector"`
 	Egress      []PoliMorphPolicyEgressRule `json:"egress" protobuf:"bytes,3,rep,name=egress"`
 	Interval    *uint32                     `json:"interval,omitempty" protobuf:"bytes,4,opt,name=interval"`
+	// +kubebuilder:default:=0
+	// Cache is the number of minutes to cache the results of the FQDN resolution
+	Cache *uint32 `json:"cache" protobuf:"bytes,5,opt,name=cache"`
 }
 
 type PoliMorphPolicyEgressRule struct {

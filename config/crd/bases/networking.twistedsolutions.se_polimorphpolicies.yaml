@@ -43,6 +43,12 @@ spec:
           spec:
             description: PoliMorphPolicySpec defines the desired state of PoliMorphPolicy
             properties:
+              cache:
+                default: 0
+                description: Cache is the number of minutes to cache the results of
+                  the FQDN resolution
+                format: int32
+                type: integer
               egress:
                 items:
                   properties:
@@ -144,6 +150,7 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
             required:
+            - cache
             - egress
             - podSelector
             type: object

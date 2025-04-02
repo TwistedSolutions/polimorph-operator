@@ -1,15 +1,15 @@
 package morph
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"os"
 	"sort"
 	"strings"
+	"sync"
+	"time"
 
 	polimorphv1 "github.com/TwistedSolutions/polimorph-operator/api/v1"
 	"github.com/miekg/dns"
@@ -18,6 +18,27 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+// Cache entry structure
+type dnsCacheEntry struct {
+	ips       map[string]time.Time
+	cacheTime time.Duration
+}
+
+var (
+	cache      = make(map[string]dnsCacheEntry)
+	cacheMutex = sync.RWMutex{}
+)
+
+func logCacheState(fqdn string) {
+	cacheMutex.RLock()
+	defer cacheMutex.RUnlock()
+	if entry, found := cache[fqdn]; found {
+		log.Log.V(1).Info("Cache state for FQDN", "fqdn", fqdn, "cache", entry.ips)
+	} else {
+		log.Log.V(1).Info("No cache entry found for FQDN", "fqdn", fqdn)
+	}
+}
 
 // Parse a NetworkPolicy CR from the FqdnNetworkPolicy with DNS lookups on FQDN or endpoint queries
 func ParseNetworkPolicy(
@@ -32,7 +53,7 @@ func ParseNetworkPolicy(
 		for _, peer := range e.To {
 			var ips []string
 			if peer.FQDN != "" {
-				ips, ttl, err = lookupFqdn(peer.FQDN)
+				ips, ttl, err = getIPsWithCache(peer.FQDN, time.Duration(*polimorphpolicy.Spec.Cache)*time.Minute)
 				if err != nil {
 					log.Log.Error(err, "Failed to lookup FQDN", "FQDN", peer.FQDN)
 					return nil, 0, err
@@ -81,7 +102,7 @@ func ParseNetworkPolicy(
 	return net, ttl, nil
 }
 
-func lookupFqdn(fqdn string) ([]string, uint32, error) {
+func performDnsLookup(fqdn string) ([]string, uint32, error) {
 	dnsServer, set := os.LookupEnv("DNS_SERVER")
 	if !set {
 		dnsServer = "kube-dns.kube-system.svc.cluster.local:53"
@@ -91,31 +112,81 @@ func lookupFqdn(fqdn string) ([]string, uint32, error) {
 	var minTTL uint32
 
 	c := new(dns.Client)
-
 	visited := make(map[string]bool)
 
 	if err := resolveFQDN(c, fqdn, dnsServer, ipSet, &minTTL, visited); err != nil {
 		return nil, 0, err
 	}
 
-	if len(ipSet) == 0 {
-		return nil, 0, fmt.Errorf("no A records found for FQDN: %s", fqdn)
-	}
-
-	// Convert map to slice
 	ips := make([]string, 0, len(ipSet))
 	for ip := range ipSet {
 		ips = append(ips, ip)
 	}
-
-	// Sort IPs for consistent output
-	sort.Slice(ips, func(i, j int) bool {
-		ip1 := net.ParseIP(ips[i])
-		ip2 := net.ParseIP(ips[j])
-		return bytes.Compare(ip1, ip2) < 0
-	})
+	sort.Strings(ips)
 
 	return ips, minTTL, nil
+}
+
+func getIPsWithCache(fqdn string, cacheTime time.Duration) ([]string, uint32, error) {
+	logCacheState(fqdn)
+
+	// If caching is disabled, resolve DNS directly
+	if cacheTime == 0 {
+		return performDnsLookup(fqdn)
+	}
+
+	cacheMutex.RLock()
+	entry, found := cache[fqdn]
+	cacheMutex.RUnlock()
+
+	currentTime := time.Now()
+	validIPs := make(map[string]bool)
+
+	if found {
+		for ip, timestamp := range entry.ips {
+			if currentTime.Sub(timestamp) < entry.cacheTime {
+				validIPs[ip] = true
+			}
+		}
+	}
+
+	ips, minTTL, err := performDnsLookup(fqdn)
+	if err != nil {
+		if len(validIPs) > 0 {
+			cachedIPs := make([]string, 0, len(validIPs))
+			for ip := range validIPs {
+				cachedIPs = append(cachedIPs, ip)
+			}
+			sort.Strings(cachedIPs)
+			log.Log.Info("Returning cached IPs due to DNS resolution failure", "fqdn", fqdn, "ips", cachedIPs)
+			return cachedIPs, minTTL, nil
+		}
+		return nil, 0, err
+	}
+
+	// Update cache with new IPs
+	expiration := time.Now().Add(cacheTime)
+	cacheMutex.Lock()
+	if _, exists := cache[fqdn]; !exists {
+		cache[fqdn] = dnsCacheEntry{ips: make(map[string]time.Time), cacheTime: cacheTime}
+	}
+	for _, ip := range ips {
+		cache[fqdn].ips[ip] = expiration
+		validIPs[ip] = true
+	}
+	cacheMutex.Unlock()
+
+	// Log updated cache state
+	logCacheState(fqdn)
+
+	// Merge valid cached IPs with newly resolved IPs
+	resultIPs := make([]string, 0, len(validIPs))
+	for ip := range validIPs {
+		resultIPs = append(resultIPs, ip)
+	}
+	sort.Strings(resultIPs)
+
+	return resultIPs, minTTL, nil
 }
 
 func resolveFQDN(
@@ -147,13 +218,10 @@ func resolveFQDN(
 	for _, rr := range append(resp.Answer, resp.Extra...) {
 		switch rr.Header().Rrtype {
 		case dns.TypeA:
-			aRec := rr.(*dns.A)
-			ipSet[aRec.A.String()] = struct{}{}
-			updateMinTTL(minTTL, aRec.Hdr.Ttl)
+			ipSet[rr.(*dns.A).A.String()] = struct{}{}
+			updateMinTTL(minTTL, rr.Header().Ttl)
 		case dns.TypeCNAME:
-			cname := rr.(*dns.CNAME)
-			updateMinTTL(minTTL, cname.Hdr.Ttl)
-			err = resolveFQDN(c, cname.Target, server, ipSet, minTTL, visited)
+			err = resolveFQDN(c, rr.(*dns.CNAME).Target, server, ipSet, minTTL, visited)
 			if err != nil {
 				return err
 			}
