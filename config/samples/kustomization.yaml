@@ -2,4 +2,5 @@
 resources:
 - networking_v1alpha1_fqdnnetworkpolicy.yaml
 - networking_v1_polimorphpolicy.yaml
+- networking_v1_netpoint.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

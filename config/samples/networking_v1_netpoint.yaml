@@ -1,0 +1,10 @@
+apiVersion: networking.twistedsolutions.se/v1
+kind: NetPoint
+metadata:
+  labels:
+    app.kubernetes.io/name: polimorph-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: netpoint-sample
+  namespace: netpoint
+spec:
+  gitOpsTrackingRequirement: ""

@@ -35,7 +35,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	polimorphv1 "github.com/TwistedSolutions/polimorph-operator/api/v1"
+	networkingv1 "github.com/TwistedSolutions/polimorph-operator/api/v1"
 	"github.com/TwistedSolutions/polimorph-operator/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
@@ -48,7 +48,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(polimorphv1.AddToScheme(scheme))
+	utilruntime.Must(networkingv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -149,6 +149,13 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "PoliMorphPolicy")
+		os.Exit(1)
+	}
+	if err = (&controller.NetPointReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "NetPoint")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

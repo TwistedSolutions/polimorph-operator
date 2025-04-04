@@ -5,6 +5,31 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - serviceaccounts
+  - services
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - networking.k8s.io
   resources:
   - networkpolicies
@@ -19,6 +44,7 @@ rules:
 - apiGroups:
   - networking.twistedsolutions.se
   resources:
+  - netpoints
   - polimorphpolicies
   verbs:
   - create
@@ -31,14 +57,41 @@ rules:
 - apiGroups:
   - networking.twistedsolutions.se
   resources:
+  - netpoints/finalizers
   - polimorphpolicies/finalizers
   verbs:
   - update
 - apiGroups:
   - networking.twistedsolutions.se
   resources:
+  - netpoints/status
   - polimorphpolicies/status
   verbs:
   - get
   - patch
   - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterrolebindings
+  - clusterroles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - route.openshift.io
+  resources:
+  - routes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

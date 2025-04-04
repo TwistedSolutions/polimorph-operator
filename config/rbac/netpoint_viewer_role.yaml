@@ -1,0 +1,23 @@
+# permissions for end users to view netpoints.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: polimorph-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: netpoint-viewer-role
+rules:
+- apiGroups:
+  - networking.twistedsolutions.se
+  resources:
+  - netpoints
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - networking.twistedsolutions.se
+  resources:
+  - netpoints/status
+  verbs:
+  - get
