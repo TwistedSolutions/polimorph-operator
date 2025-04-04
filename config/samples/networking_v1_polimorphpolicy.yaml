@@ -8,13 +8,13 @@ spec:
     - port: 443
       protocol: TCP
     to:
-    # - FQDN: api.github.com
-    # - FQDN: github.com
+    - FQDN: cdn.contentful.com
+    - FQDN: login.microsoftonline.com
     # - FQDN: nodejs.org
     # - FQDN: registry.npmjs.org
-    - endpoint: https://3sweden.zendesk.com/ips
-      jsonPaths:
-      - $.ips.ingress.all
+    # - endpoint: https://3sweden.zendesk.com/ips
+    #   jsonPaths:
+    #   - $.ips.ingress.all
   podSelector:
     matchLabels:
       app: example

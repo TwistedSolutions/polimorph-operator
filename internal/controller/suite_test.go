@@ -34,7 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	networkingv1 "github.com/TwistedSolutions/polimorph-operator/api/v1"
-	networkingv1alpha1 "github.com/TwistedSolutions/polimorph-operator/api/v1alpha1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -77,9 +76,6 @@ var _ = BeforeSuite(func() {
 	cfg, err = testEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
-
-	err = networkingv1alpha1.AddToScheme(scheme.Scheme)
-	Expect(err).NotTo(HaveOccurred())
 
 	err = networkingv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())

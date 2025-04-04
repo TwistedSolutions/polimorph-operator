@@ -36,10 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	polimorphv1 "github.com/TwistedSolutions/polimorph-operator/api/v1"
-	networkingv1alpha1 "github.com/TwistedSolutions/polimorph-operator/api/v1alpha1"
-	"github.com/TwistedSolutions/polimorph-operator/internal/checkpoint"
 	"github.com/TwistedSolutions/polimorph-operator/internal/controller"
-	fqdncontroller "github.com/TwistedSolutions/polimorph-operator/internal/controller/fqdnnetworkpolicy"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -51,7 +48,6 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(networkingv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(polimorphv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
@@ -148,15 +144,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	checkpoint.SetupCheckpointAPI(mgr.GetClient())
-
-	if err = (&fqdncontroller.FqdnNetworkPolicyReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "FqdnNetworkPolicy")
-		os.Exit(1)
-	}
 	if err = (&controller.PoliMorphPolicyReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
