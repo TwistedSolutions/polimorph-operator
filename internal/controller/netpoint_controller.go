@@ -121,8 +121,9 @@ func (r *NetPointReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 					ServiceAccountName: sa.Name,
 					Containers: []corev1.Container{
 						{
-							Name:  "netpoint",
-							Image: "quay.io/twistedsolutions/netpoint:" + netpoint.Spec.Version,
+							Name:            "netpoint",
+							Image:           "quay.io/twistedsolutions/netpoint:" + netpoint.Spec.Version,
+							ImagePullPolicy: corev1.PullAlways,
 							Ports: []corev1.ContainerPort{
 								{ContainerPort: 8080},
 							},
