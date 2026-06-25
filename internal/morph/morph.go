@@ -59,7 +59,7 @@ func ParseNetworkPolicy(
 					return nil, 0, err
 				}
 			} else if peer.Endpoint != "" {
-				ips, err = queryEndpoint(peer.Endpoint, peer.JSONPaths)
+				ips, err = queryEndpoint(peer.Endpoint, peer.JSONPaths, peer.JSONFilters)
 				if err != nil {
 					log.Log.Error(err, "Failed to query endpoint", "Endpoint", peer.Endpoint)
 					return nil, 0, err
@@ -237,7 +237,7 @@ func updateMinTTL(minTTL *uint32, newTTL uint32) {
 	}
 }
 
-func queryEndpoint(endpoint string, jsonPaths []string) ([]string, error) {
+func queryEndpoint(endpoint string, jsonPaths []string, jsonFilters []polimorphv1.JSONFilter) ([]string, error) {
 	resp, err := http.Get(endpoint)
 	if err != nil {
 		return nil, err
@@ -267,6 +267,48 @@ func queryEndpoint(endpoint string, jsonPaths []string) ([]string, error) {
 		ips = append(ips, values...)
 	}
 
+	for _, filter := range jsonFilters {
+		values, err := extractFilteredValuesFromJSON(jsonData, filter)
+		if err != nil {
+			return nil, err
+		}
+		ips = append(ips, values...)
+	}
+
+	return ips, nil
+}
+
+func extractFilteredValuesFromJSON(jsonData map[string]interface{}, filter polimorphv1.JSONFilter) ([]string, error) {
+	raw, err := jsonpath.Read(jsonData, filter.Path)
+	if err != nil {
+		return nil, fmt.Errorf("error reading path %s: %v", filter.Path, err)
+	}
+
+	items, ok := raw.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("path %s did not return an array", filter.Path)
+	}
+
+	var ips []string
+	for _, item := range items {
+		obj, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		match := true
+		for k, v := range filter.Conditions {
+			val, ok := obj[k].(string)
+			if !ok || !strings.EqualFold(val, v) {
+				match = false
+				break
+			}
+		}
+		if match {
+			if ipVal, ok := obj[filter.ValueField].(string); ok {
+				ips = append(ips, ipVal)
+			}
+		}
+	}
 	return ips, nil
 }
 

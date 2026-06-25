@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.1
+    controller-gen.kubebuilder.io/version: v0.17.0
   name: polimorphpolicies.networking.twistedsolutions.se
 spec:
   group: networking.twistedsolutions.se
@@ -89,6 +89,31 @@ spec:
                             type: string
                           endpoint:
                             type: string
+                          jsonFilters:
+                            items:
+                              description: |-
+                                JSONFilter defines a filter to apply when extracting values from a JSON array.
+                                All Conditions must match (AND logic) for an object to be included.
+                              properties:
+                                conditions:
+                                  additionalProperties:
+                                    type: string
+                                  description: Conditions is a map of field=value
+                                    pairs that must all match (case-insensitive)
+                                  type: object
+                                path:
+                                  description: Path is a jsonpath expression pointing
+                                    to an array of objects, e.g. "$.prefixes"
+                                  type: string
+                                valueField:
+                                  description: ValueField is the field to extract
+                                    from each matching object, e.g. "ip_prefix"
+                                  type: string
+                              required:
+                              - path
+                              - valueField
+                              type: object
+                            type: array
                           jsonPaths:
                             items:
                               type: string

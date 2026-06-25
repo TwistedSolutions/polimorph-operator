@@ -36,10 +36,22 @@ type PoliMorphPolicyEgressRule struct {
 	To    []PoliMorphNetworkPolicyPeer   `json:"to,omitempty" protobuf:"bytes,2,rep,name=to"`
 }
 
+// JSONFilter defines a filter to apply when extracting values from a JSON array.
+// All Conditions must match (AND logic) for an object to be included.
+type JSONFilter struct {
+	// Path is a jsonpath expression pointing to an array of objects, e.g. "$.prefixes"
+	Path string `json:"path" protobuf:"bytes,1,name=path"`
+	// Conditions is a map of field=value pairs that must all match (case-insensitive)
+	Conditions map[string]string `json:"conditions,omitempty" protobuf:"bytes,2,name=conditions"`
+	// ValueField is the field to extract from each matching object, e.g. "ip_prefix"
+	ValueField string `json:"valueField" protobuf:"bytes,3,name=valueField"`
+}
+
 type PoliMorphNetworkPolicyPeer struct {
-	FQDN      string   `json:"FQDN,omitempty" protobuf:"bytes,1,name=FQDN"`
-	Endpoint  string   `json:"endpoint,omitempty" protobuf:"bytes,2,name=endpoint"`
-	JSONPaths []string `json:"jsonPaths,omitempty" protobuf:"bytes,3,name=jsonPaths"`
+	FQDN        string       `json:"FQDN,omitempty"        protobuf:"bytes,1,name=FQDN"`
+	Endpoint    string       `json:"endpoint,omitempty"    protobuf:"bytes,2,name=endpoint"`
+	JSONPaths   []string     `json:"jsonPaths,omitempty"   protobuf:"bytes,3,name=jsonPaths"`
+	JSONFilters []JSONFilter `json:"jsonFilters,omitempty" protobuf:"bytes,4,name=jsonFilters"`
 }
 
 // PoliMorphPolicyStatus defines the observed state of PoliMorphPolicy

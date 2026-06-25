@@ -1,0 +1,20 @@
+apiVersion: networking.twistedsolutions.se/v1
+kind: PoliMorphPolicy
+metadata:
+  name: polimorphpolicy-aws-s3-eu-north-1
+spec:
+  podSelector:
+    matchLabels:
+      app: example
+  egress:
+  - ports:
+    - port: 443
+      protocol: TCP
+    to:
+    - endpoint: https://ip-ranges.amazonaws.com/ip-ranges.json
+      jsonFilters:
+      - path: "$.prefixes"
+        conditions:
+          service: "S3"
+          region: "eu-north-1"
+        valueField: "ip_prefix"
