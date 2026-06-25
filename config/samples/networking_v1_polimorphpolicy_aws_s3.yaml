@@ -6,6 +6,7 @@ spec:
   podSelector:
     matchLabels:
       app: example
+  interval: 3600
   egress:
   - ports:
     - port: 443

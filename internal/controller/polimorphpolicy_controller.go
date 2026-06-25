@@ -63,6 +63,7 @@ const (
 
 func (r *PoliMorphPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
+	log.Info("Reconciling PoliMorphPolicy", "name", req.Name, "namespace", req.Namespace)
 
 	polimorphpolicy := &polimorphv1.PoliMorphPolicy{}
 	if err := r.Get(ctx, req.NamespacedName, polimorphpolicy); err != nil {
@@ -163,7 +164,7 @@ func (r *PoliMorphPolicyReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 		log.Info("Successfully updated NetworkPolicy")
 	} else {
-		log.V(1).Info("NetworkPolicy is up to date")
+		log.Info("NetworkPolicy is up to date")
 	}
 
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {

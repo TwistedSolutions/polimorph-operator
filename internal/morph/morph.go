@@ -3,7 +3,7 @@ package morph
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"sort"
@@ -248,7 +248,7 @@ func queryEndpoint(endpoint string, jsonPaths []string, jsonFilters []polimorphv
 		return nil, fmt.Errorf("failed to fetch endpoint %s, status code: %d", endpoint, resp.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
